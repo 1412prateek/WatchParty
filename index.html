@@ -35,7 +35,7 @@
             transform: scaleX(-1); /* Mirror effect for self/webcam */
         }
         
-        /* Screen share shouldn't be mirrored */
+        /* Screen share/File share shouldn't be mirrored */
         video.screen-share {
             transform: scaleX(1); 
             object-fit: contain; 
@@ -96,7 +96,7 @@
                     <i class="fa-solid fa-users-viewfinder text-4xl text-blue-500"></i>
                 </div>
                 <h2 class="text-2xl font-bold mb-2">Start Watching Together</h2>
-                <p class="text-slate-400 mb-8">Share your screen or join a friend's room to watch movies, videos, and photos in real-time.</p>
+                <p class="text-slate-400 mb-8">Share your screen, stream a movie file, or join a friend's room.</p>
 
                 <div class="space-y-4">
                     <button id="create-room-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2">
@@ -124,11 +124,11 @@
         <div id="cinema-stage" class="flex-1 bg-black flex items-center justify-center relative p-4">
             <div id="placeholder-cinema" class="text-center text-slate-600">
                 <i class="fa-solid fa-display text-6xl mb-4 opacity-50"></i>
-                <p class="text-lg font-medium">Waiting for screen share...</p>
-                <p class="text-sm opacity-60">Click the "Share Screen" button to start casting.</p>
+                <p class="text-lg font-medium">Waiting for content...</p>
+                <p class="text-sm opacity-60">Share your screen or stream a file to start.</p>
             </div>
             <!-- The Shared Screen Video Element -->
-            <video id="shared-screen-video" autoplay playsinline class="screen-share hidden shadow-2xl"></video>
+            <video id="shared-screen-video" autoplay playsinline class="screen-share hidden shadow-2xl bg-black"></video>
         </div>
 
         <!-- Sidebar Participants (Grid) -->
@@ -153,7 +153,7 @@
     </main>
 
     <!-- Bottom Controls -->
-    <footer class="h-20 bg-slate-900 border-t border-slate-800 flex items-center justify-center gap-4 shrink-0 z-20">
+    <footer class="h-20 bg-slate-900 border-t border-slate-800 flex items-center justify-center gap-4 shrink-0 z-20 px-4">
         
         <button id="toggle-mic" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700" title="Toggle Microphone">
             <i class="fa-solid fa-microphone"></i>
@@ -165,9 +165,17 @@
 
         <div class="w-px h-8 bg-slate-700 mx-2"></div>
 
-        <button id="share-screen-btn" class="px-6 h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20">
+        <button id="share-screen-btn" class="px-5 h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20">
             <i class="fa-solid fa-desktop"></i>
-            <span>Share Screen</span>
+            <span class="hidden sm:inline">Screen</span>
+        </button>
+
+        <!-- Hidden File Input -->
+        <input type="file" id="file-input" accept="video/*" class="hidden">
+        
+        <button id="share-file-btn" class="px-5 h-12 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20">
+            <i class="fa-solid fa-file-video"></i>
+            <span class="hidden sm:inline">Stream File</span>
         </button>
 
         <div class="w-px h-8 bg-slate-700 mx-2"></div>
@@ -185,11 +193,12 @@
             peer: null,
             myId: null,
             myStream: null,
-            screenStream: null,
+            currentShareStream: null, // Can be screen or file
+            shareType: null, // 'screen' or 'file'
+            fileUrl: null,
             peers: {}, // Map<peerId, {call, videoEl}>
             isMuted: false,
-            isVideoOff: false,
-            isSharing: false
+            isVideoOff: false
         };
 
         // --- DOM Elements ---
@@ -212,14 +221,15 @@
             
             btnMic: document.getElementById('toggle-mic'),
             btnCam: document.getElementById('toggle-cam'),
-            btnShare: document.getElementById('share-screen-btn'),
+            btnShareScreen: document.getElementById('share-screen-btn'),
+            btnShareFile: document.getElementById('share-file-btn'),
+            fileInput: document.getElementById('file-input'),
             btnLeave: document.getElementById('leave-btn'),
             partCount: document.getElementById('participant-count')
         };
 
         // --- Initialization ---
 
-        // 1. Get Local User Media (Camera/Mic)
         async function initLocalStream() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -233,13 +243,9 @@
             }
         }
 
-        // 2. Initialize PeerJS
         function initPeer(customId = null) {
             return new Promise((resolve, reject) => {
-                // Using standard free peerjs server
-                const peer = new Peer(customId, {
-                    debug: 2
-                });
+                const peer = new Peer(customId, { debug: 2 });
 
                 peer.on('open', (id) => {
                     state.myId = id;
@@ -260,7 +266,6 @@
                     reject(err);
                 });
 
-                // Answer Incoming Calls
                 peer.on('call', (call) => {
                     handleIncomingCall(call);
                 });
@@ -270,34 +275,30 @@
         // --- Call Handling ---
 
         function handleIncomingCall(call) {
-            // Check metadata to see if it's a screen share or a user face
-            const isScreenShare = call.metadata && call.metadata.type === 'screen';
+            const isContentShare = call.metadata && call.metadata.type === 'content';
             
-            console.log("Incoming call. Is Screen Share?", isScreenShare);
+            console.log("Incoming call. Is Content Share?", isContentShare);
 
-            // Answer the call. 
-            // If it's a screen share coming in, we answer with null (we don't send video back to the screen share stream usually)
-            // or we answer with our audio only. For simplicity, we answer with our main stream.
+            // Answer with current AV stream (or null if we wanted to be receive-only for content)
             call.answer(state.myStream);
 
             call.on('stream', (remoteStream) => {
-                if (isScreenShare) {
-                    setCinemaMode(remoteStream);
+                if (isContentShare) {
+                    setCinemaMode(remoteStream, false, false); // Not local, no controls
                 } else {
                     addRemoteVideo(call.peer, remoteStream);
                 }
             });
 
             call.on('close', () => {
-                if (isScreenShare) {
+                if (isContentShare) {
                     stopCinemaMode();
                 } else {
                     removeRemoteVideo(call.peer);
                 }
             });
 
-            // Store call reference if it's a participant
-            if (!isScreenShare) {
+            if (!isContentShare) {
                 state.peers[call.peer] = { call };
                 updateParticipantCount();
             }
@@ -306,11 +307,9 @@
         function connectToPeer(peerId) {
             if (!state.myStream) return;
             
-            // 1. Call for Video Chat
             const call = state.peer.call(peerId, state.myStream, { metadata: { type: 'face' } });
             
             call.on('stream', (remoteStream) => {
-                // When we call them, they answer with their stream
                 addRemoteVideo(peerId, remoteStream);
             });
 
@@ -322,80 +321,154 @@
             updateParticipantCount();
         }
 
-        // --- Screen Sharing Logic ---
+        // --- Content Sharing Logic (Screen & File) ---
 
+        function broadcastStream(stream) {
+            Object.keys(state.peers).forEach(peerId => {
+                state.peer.call(peerId, stream, { metadata: { type: 'content' } });
+            });
+        }
+
+        function stopCurrentShare() {
+            if (state.currentShareStream) {
+                state.currentShareStream.getTracks().forEach(track => track.stop());
+            }
+            state.currentShareStream = null;
+            state.shareType = null;
+            
+            if (state.fileUrl) {
+                URL.revokeObjectURL(state.fileUrl);
+                state.fileUrl = null;
+            }
+
+            stopCinemaMode();
+            resetShareButtons();
+        }
+
+        // 1. Screen Share
         async function startScreenShare() {
+            if (state.currentShareStream) stopCurrentShare();
+
             try {
-                // Get screen stream
                 const stream = await navigator.mediaDevices.getDisplayMedia({ 
                     video: { cursor: "always" }, 
                     audio: true 
                 });
-                state.screenStream = stream;
+                state.currentShareStream = stream;
+                state.shareType = 'screen';
 
-                // Show locally
-                setCinemaMode(stream, true);
+                setCinemaMode(stream, true, false); // Local preview, no controls needed for screen share
                 
-                // Update Button UI
-                els.btnShare.classList.add('bg-red-600', 'hover:bg-red-700');
-                els.btnShare.classList.remove('bg-blue-600', 'hover:bg-blue-500');
-                els.btnShare.innerHTML = `<i class="fa-solid fa-stop"></i><span>Stop Share</span>`;
-                state.isSharing = true;
+                updateShareButtons('screen');
 
-                // Detect when user clicks "Stop Sharing" in browser native UI
-                stream.getVideoTracks()[0].onended = () => {
-                    stopScreenShare();
-                };
-
-                // CALL EVERYONE with the screen stream
-                Object.keys(state.peers).forEach(peerId => {
-                    const call = state.peer.call(peerId, stream, { metadata: { type: 'screen' } });
-                    // We don't really need to handle the answer stream for screen shares
-                });
+                stream.getVideoTracks()[0].onended = () => stopCurrentShare();
+                broadcastStream(stream);
 
             } catch (err) {
                 console.error("Error sharing screen:", err);
             }
         }
 
-        function stopScreenShare() {
-            if (!state.screenStream) return;
+        // 2. File Share
+        els.btnShareFile.addEventListener('click', () => {
+            if (state.shareType === 'file') {
+                stopCurrentShare();
+            } else {
+                els.fileInput.click();
+            }
+        });
 
-            // Stop tracks
-            state.screenStream.getTracks().forEach(track => track.stop());
-            state.screenStream = null;
+        els.fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            startFileShare(file);
+            e.target.value = ''; // Reset input
+        });
 
-            // Reset UI
-            stopCinemaMode();
-            els.btnShare.classList.remove('bg-red-600', 'hover:bg-red-700');
-            els.btnShare.classList.add('bg-blue-600', 'hover:bg-blue-500');
-            els.btnShare.innerHTML = `<i class="fa-solid fa-desktop"></i><span>Share Screen</span>`;
-            state.isSharing = false;
+        function startFileShare(file) {
+            if (state.currentShareStream) stopCurrentShare();
+
+            state.fileUrl = URL.createObjectURL(file);
+            state.shareType = 'file';
+
+            // Set video source locally first
+            els.sharedScreenVideo.srcObject = null;
+            els.sharedScreenVideo.src = state.fileUrl;
             
-            // Note: PeerJS calls close automatically when track ends usually, but we might need to notify peers manually in a robust app.
-            // For this simple version, simply stopping tracks usually kills the freeze frame on the other end or we'd need a data channel signal.
-            // The receiver sees stream end or 'mute'. 
+            // Wait for metadata to load to ensure captureStream works
+            els.sharedScreenVideo.onloadedmetadata = () => {
+                // IMPORTANT: Controls enabled for Host so they can play/pause/seek
+                setCinemaMode(null, true, true); 
+                
+                // Capture the stream from the video element
+                // mozCaptureStream for Firefox, captureStream for others
+                const stream = els.sharedScreenVideo.captureStream ? 
+                               els.sharedScreenVideo.captureStream() : 
+                               els.sharedScreenVideo.mozCaptureStream();
+                
+                state.currentShareStream = stream;
+                
+                updateShareButtons('file');
+                broadcastStream(stream);
+                
+                els.sharedScreenVideo.play();
+            };
         }
 
         // --- UI Helpers ---
 
-        function setCinemaMode(stream, isLocal = false) {
+        function setCinemaMode(stream, isLocal, showControls) {
             els.placeholderCinema.classList.add('hidden');
             els.sharedScreenVideo.classList.remove('hidden');
-            els.sharedScreenVideo.srcObject = stream;
             
-            // If it's local screen share, mute it so we don't hear ourselves
-            els.sharedScreenVideo.muted = isLocal;
+            // For file sharing, we set .src directly, not .srcObject
+            if (stream) {
+                els.sharedScreenVideo.src = ""; 
+                els.sharedScreenVideo.srcObject = stream;
+            }
+
+            els.sharedScreenVideo.controls = showControls;
+            els.sharedScreenVideo.muted = isLocal && !showControls; // Mute screen share, but maybe not file share if host wants to hear
+            
+            // If file share host, we want to hear it, but captureStream also sends audio.
+            // If we mute the element, captureStream usually sends silence. 
+            // So we keep it unmuted for file share host.
+            if (isLocal && showControls) {
+                els.sharedScreenVideo.muted = false;
+            }
         }
 
         function stopCinemaMode() {
             els.placeholderCinema.classList.remove('hidden');
             els.sharedScreenVideo.classList.add('hidden');
             els.sharedScreenVideo.srcObject = null;
+            els.sharedScreenVideo.src = "";
+            els.sharedScreenVideo.controls = false;
+        }
+
+        function resetShareButtons() {
+            els.btnShareScreen.classList.remove('bg-red-600', 'hover:bg-red-700');
+            els.btnShareScreen.classList.add('bg-blue-600', 'hover:bg-blue-500');
+            els.btnShareScreen.innerHTML = `<i class="fa-solid fa-desktop"></i><span class="hidden sm:inline">Screen</span>`;
+
+            els.btnShareFile.classList.remove('bg-red-600', 'hover:bg-red-700');
+            els.btnShareFile.classList.add('bg-purple-600', 'hover:bg-purple-500');
+            els.btnShareFile.innerHTML = `<i class="fa-solid fa-file-video"></i><span class="hidden sm:inline">Stream File</span>`;
+        }
+
+        function updateShareButtons(type) {
+            if (type === 'screen') {
+                els.btnShareScreen.classList.add('bg-red-600', 'hover:bg-red-700');
+                els.btnShareScreen.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+                els.btnShareScreen.innerHTML = `<i class="fa-solid fa-stop"></i><span class="hidden sm:inline">Stop Screen</span>`;
+            } else if (type === 'file') {
+                els.btnShareFile.classList.add('bg-red-600', 'hover:bg-red-700');
+                els.btnShareFile.classList.remove('bg-purple-600', 'hover:bg-purple-500');
+                els.btnShareFile.innerHTML = `<i class="fa-solid fa-stop"></i><span class="hidden sm:inline">Stop File</span>`;
+            }
         }
 
         function addRemoteVideo(peerId, stream) {
-            // Check if already exists
             if (document.getElementById(`video-${peerId}`)) return;
 
             const div = document.createElement('div');
@@ -405,10 +478,8 @@
                 <video autoplay playsinline></video>
                 <div class="participant-label">Friend</div>
             `;
-            
             const video = div.querySelector('video');
             video.srcObject = stream;
-
             els.videoGrid.appendChild(div);
             updateParticipantCount();
         }
@@ -421,7 +492,7 @@
         }
 
         function updateParticipantCount() {
-            const count = Object.keys(state.peers).length + 1; // +1 for me
+            const count = Object.keys(state.peers).length + 1;
             els.partCount.innerText = `${count} Online`;
         }
 
@@ -440,96 +511,70 @@
             els.createBtn.disabled = true;
             els.createBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating...`;
             
-            const success = await initLocalStream();
-            if (!success) {
+            if (await initLocalStream()) {
+                const roomId = generateRoomId();
+                await initPeer(roomId);
+                els.setupScreen.classList.add('hidden');
+                els.roomInfo.classList.remove('hidden');
+                els.displayRoomId.innerText = roomId;
+            } else {
                 els.createBtn.disabled = false;
                 els.createBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create New Room`;
-                return;
             }
-
-            const roomId = generateRoomId();
-            await initPeer(roomId);
-
-            // UI Transition
-            els.setupScreen.classList.add('hidden');
-            els.roomInfo.classList.remove('hidden');
-            els.displayRoomId.innerText = roomId;
         });
 
         els.joinBtn.addEventListener('click', async () => {
             const roomId = els.roomInput.value.trim().toUpperCase();
-            if (!roomId) {
-                showStatus("Please enter a Room ID", true);
-                return;
-            }
+            if (!roomId) return showStatus("Please enter a Room ID", true);
 
             els.joinBtn.disabled = true;
             els.joinBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
 
-            const success = await initLocalStream();
-            if (!success) {
+            if (await initLocalStream()) {
+                await initPeer(); 
+                connectToPeer(roomId);
+                els.setupScreen.classList.add('hidden');
+                els.roomInfo.classList.remove('hidden');
+                els.displayRoomId.innerText = roomId;
+            } else {
                 els.joinBtn.disabled = false;
                 els.joinBtn.innerText = "Join";
-                return;
             }
-
-            // Init peer with random ID, then connect to host
-            await initPeer(); 
-
-            // Connect to the room (Host ID)
-            connectToPeer(roomId);
-
-            // UI Transition
-            els.setupScreen.classList.add('hidden');
-            els.roomInfo.classList.remove('hidden');
-            els.displayRoomId.innerText = roomId;
         });
 
         els.copyBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(els.displayRoomId.innerText);
             const originalIcon = els.copyBtn.innerHTML;
             els.copyBtn.innerHTML = `<i class="fa-solid fa-check text-green-500"></i>`;
-            setTimeout(() => {
-                els.copyBtn.innerHTML = originalIcon;
-            }, 2000);
+            setTimeout(() => { els.copyBtn.innerHTML = originalIcon; }, 2000);
         });
 
         els.btnMic.addEventListener('click', () => {
             state.isMuted = !state.isMuted;
             state.myStream.getAudioTracks()[0].enabled = !state.isMuted;
-            
-            els.btnMic.innerHTML = state.isMuted 
-                ? `<i class="fa-solid fa-microphone-slash"></i>` 
-                : `<i class="fa-solid fa-microphone"></i>`;
+            els.btnMic.innerHTML = state.isMuted ? `<i class="fa-solid fa-microphone-slash"></i>` : `<i class="fa-solid fa-microphone"></i>`;
             els.btnMic.classList.toggle('bg-red-500', state.isMuted);
-            els.btnMic.classList.toggle('hover:bg-red-600', state.isMuted);
             els.btnMic.classList.toggle('bg-slate-800', !state.isMuted);
         });
 
         els.btnCam.addEventListener('click', () => {
             state.isVideoOff = !state.isVideoOff;
             state.myStream.getVideoTracks()[0].enabled = !state.isVideoOff;
-            
-            els.btnCam.innerHTML = state.isVideoOff 
-                ? `<i class="fa-solid fa-video-slash"></i>` 
-                : `<i class="fa-solid fa-video"></i>`;
+            els.btnCam.innerHTML = state.isVideoOff ? `<i class="fa-solid fa-video-slash"></i>` : `<i class="fa-solid fa-video"></i>`;
             els.btnCam.classList.toggle('bg-red-500', state.isVideoOff);
-            els.btnCam.classList.toggle('hover:bg-red-600', state.isVideoOff);
             els.btnCam.classList.toggle('bg-slate-800', !state.isVideoOff);
         });
 
-        els.btnShare.addEventListener('click', () => {
-            if (state.isSharing) {
-                stopScreenShare();
+        els.btnShareScreen.addEventListener('click', () => {
+            if (state.shareType === 'screen') {
+                stopCurrentShare();
             } else {
                 startScreenShare();
             }
         });
 
         els.btnLeave.addEventListener('click', () => {
-            if (confirm("Are you sure you want to leave?")) {
-                window.location.reload();
-            }
+            if (confirm("Are you sure you want to leave?")) window.location.reload();
         });
 
     </script>
