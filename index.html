@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WatchParty - Realtime Screen Sharing & Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WatchParty - Responsive</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,7 +21,7 @@
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: white; overflow: hidden; }
         
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
 
@@ -48,22 +48,15 @@
 
         .participant-label {
             position: absolute;
-            bottom: 8px;
-            left: 8px;
+            bottom: 6px;
+            left: 6px;
             background: rgba(0,0,0,0.6);
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             pointer-events: none;
+            white-space: nowrap;
         }
-
-        /* Animations */
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-        }
-        .animate-pulse-ring { animation: pulse-ring 2s infinite; }
 
         .hidden { display: none !important; }
     </style>
@@ -71,76 +64,92 @@
 <body class="h-screen flex flex-col">
 
     <!-- Navbar -->
-    <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-20">
+    <header class="h-14 lg:h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 lg:px-6 shrink-0 z-20">
         <div class="flex items-center gap-2">
-            <i class="fa-solid fa-film text-blue-500 text-2xl"></i>
-            <h1 class="text-xl font-bold tracking-tight">WatchParty</h1>
+            <i class="fa-solid fa-film text-blue-500 text-xl lg:text-2xl"></i>
+            <h1 class="text-lg lg:text-xl font-bold tracking-tight">WatchParty</h1>
         </div>
         
-        <div id="room-info" class="hidden flex items-center gap-4 bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700">
-            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Room ID</span>
-            <span id="display-room-id" class="font-mono text-blue-400 font-bold select-all cursor-pointer" title="Click to Copy">---</span>
+        <div id="room-info" class="hidden flex items-center gap-3 bg-slate-800 px-3 py-1 lg:py-1.5 rounded-full border border-slate-700">
+            <span class="hidden sm:inline text-xs text-slate-400 uppercase tracking-wider font-semibold">Room</span>
+            <span id="display-room-id" class="font-mono text-blue-400 font-bold select-all cursor-pointer text-sm lg:text-base" title="Click to Copy">---</span>
             <button id="copy-btn" class="text-slate-400 hover:text-white transition-colors">
                 <i class="fa-regular fa-copy"></i>
             </button>
         </div>
     </header>
 
-    <!-- Main Layout -->
-    <main class="flex-1 flex overflow-hidden relative">
+    <!-- Main Layout: Stack vertical on mobile, Row on Desktop -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         <!-- Welcome / Setup Modal -->
         <div id="setup-screen" class="absolute inset-0 z-50 bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
-                <div class="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <i class="fa-solid fa-users-viewfinder text-4xl text-blue-500"></i>
+            <div class="bg-slate-800 border border-slate-700 p-6 lg:p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+                <div class="w-16 h-16 lg:w-20 lg:h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6">
+                    <i class="fa-solid fa-users-viewfinder text-3xl lg:text-4xl text-blue-500"></i>
                 </div>
-                <h2 class="text-2xl font-bold mb-2">Start Watching Together</h2>
-                <p class="text-slate-400 mb-8">Share your screen, stream a movie file, or join a friend's room.</p>
+                <h2 class="text-xl lg:text-2xl font-bold mb-2">Watch Together</h2>
+                <p class="text-slate-400 text-sm lg:text-base mb-6 lg:mb-8">Share your screen or join a room from any device.</p>
 
-                <div class="space-y-4">
+                <div class="space-y-3 lg:space-y-4">
                     <button id="create-room-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-plus"></i> Create New Room
+                        <i class="fa-solid fa-plus"></i> Create Room
                     </button>
                     
                     <div class="relative flex py-2 items-center">
                         <div class="flex-grow border-t border-slate-700"></div>
-                        <span class="flex-shrink-0 mx-4 text-slate-500 text-sm">OR</span>
+                        <span class="flex-shrink-0 mx-4 text-slate-500 text-xs">OR</span>
                         <div class="flex-grow border-t border-slate-700"></div>
                     </div>
 
                     <div class="flex gap-2">
-                        <input type="text" id="room-input" placeholder="Enter Room ID" class="flex-1 bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-blue-500 transition-colors uppercase font-mono">
+                        <input type="text" id="room-input" placeholder="Room ID" class="flex-1 bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-blue-500 transition-colors uppercase font-mono text-center sm:text-left">
                         <button id="join-room-btn" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-6 rounded-xl transition-all">
                             Join
                         </button>
                     </div>
-                    <p id="status-msg" class="text-sm h-5 text-red-400 font-medium"></p>
+                    <p id="status-msg" class="text-xs lg:text-sm h-5 text-red-400 font-medium"></p>
                 </div>
             </div>
         </div>
 
         <!-- Cinema Area (Shared Screen) -->
-        <div id="cinema-stage" class="flex-1 bg-black flex items-center justify-center relative p-4">
-            <div id="placeholder-cinema" class="text-center text-slate-600">
-                <i class="fa-solid fa-display text-6xl mb-4 opacity-50"></i>
-                <p class="text-lg font-medium">Waiting for content...</p>
-                <p class="text-sm opacity-60">Share your screen or stream a file to start.</p>
+        <div id="cinema-stage" class="flex-1 bg-black flex items-center justify-center relative p-2 lg:p-4 overflow-hidden">
+            <div id="placeholder-cinema" class="text-center text-slate-600 px-4">
+                <i class="fa-solid fa-display text-4xl lg:text-6xl mb-4 opacity-50"></i>
+                <p class="text-base lg:text-lg font-medium">Waiting for content...</p>
+                <p class="text-xs lg:text-sm opacity-60 mt-1">Share screen or file to start.</p>
             </div>
             <!-- The Shared Screen Video Element -->
-            <video id="shared-screen-video" autoplay playsinline class="screen-share hidden shadow-2xl bg-black"></video>
+            <video id="shared-screen-video" autoplay playsinline class="screen-share hidden shadow-2xl bg-black w-full h-full"></video>
         </div>
 
         <!-- Sidebar Participants (Grid) -->
-        <div id="participants-bar" class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 transition-all duration-300 transform translate-x-0">
-            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
-                <h3 class="font-semibold text-slate-300">Friends</h3>
+        <!-- Mobile: Horizontal Strip at bottom. Desktop: Vertical Sidebar at right -->
+        <div id="participants-bar" class="
+            h-36 lg:h-auto 
+            w-full lg:w-80 
+            bg-slate-900 
+            border-t lg:border-t-0 lg:border-l border-slate-800 
+            flex flex-col shrink-0 
+            z-10">
+            
+            <div class="p-2 lg:p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 sticky left-0 top-0">
+                <h3 class="font-semibold text-slate-300 text-sm lg:text-base">Friends</h3>
                 <span id="participant-count" class="bg-slate-800 text-xs px-2 py-1 rounded text-slate-400">1 Online</span>
             </div>
             
-            <div id="video-grid" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- Video Container Grid -->
+            <!-- Mobile: flex-row, overflow-x. Desktop: flex-col, overflow-y -->
+            <div id="video-grid" class="
+                flex-1 p-2 lg:p-4 
+                flex flex-row lg:flex-col 
+                gap-2 lg:gap-4 
+                overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto 
+                items-center lg:items-stretch">
+                
                 <!-- My Video -->
-                <div class="video-container aspect-video bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative group">
+                <div class="video-container aspect-video bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative group shrink-0 w-40 lg:w-auto">
                     <video id="my-video" muted autoplay playsinline></video>
                     <div class="participant-label">You</div>
                     <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -153,35 +162,35 @@
     </main>
 
     <!-- Bottom Controls -->
-    <footer class="h-20 bg-slate-900 border-t border-slate-800 flex items-center justify-center gap-4 shrink-0 z-20 px-4">
+    <footer class="h-16 lg:h-20 bg-slate-900 border-t border-slate-800 flex items-center justify-center gap-2 lg:gap-4 shrink-0 z-20 px-2 lg:px-4">
         
-        <button id="toggle-mic" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700" title="Toggle Microphone">
-            <i class="fa-solid fa-microphone"></i>
+        <button id="toggle-mic" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700" title="Toggle Microphone">
+            <i class="fa-solid fa-microphone text-sm lg:text-base"></i>
         </button>
 
-        <button id="toggle-cam" class="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700" title="Toggle Camera">
-            <i class="fa-solid fa-video"></i>
+        <button id="toggle-cam" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700" title="Toggle Camera">
+            <i class="fa-solid fa-video text-sm lg:text-base"></i>
         </button>
 
-        <div class="w-px h-8 bg-slate-700 mx-2"></div>
+        <div class="w-px h-6 lg:h-8 bg-slate-700 mx-1 lg:mx-2"></div>
 
-        <button id="share-screen-btn" class="px-5 h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20">
+        <button id="share-screen-btn" class="px-3 lg:px-5 h-10 lg:h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20 text-sm lg:text-base">
             <i class="fa-solid fa-desktop"></i>
-            <span class="hidden sm:inline">Screen</span>
+            <span class="hidden md:inline">Screen</span>
         </button>
 
         <!-- Hidden File Input -->
         <input type="file" id="file-input" accept="video/*" class="hidden">
         
-        <button id="share-file-btn" class="px-5 h-12 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20">
+        <button id="share-file-btn" class="px-3 lg:px-5 h-10 lg:h-12 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20 text-sm lg:text-base">
             <i class="fa-solid fa-file-video"></i>
-            <span class="hidden sm:inline">Stream File</span>
+            <span class="hidden md:inline">File</span>
         </button>
 
-        <div class="w-px h-8 bg-slate-700 mx-2"></div>
+        <div class="w-px h-6 lg:h-8 bg-slate-700 mx-1 lg:mx-2"></div>
 
-        <button id="leave-btn" class="w-12 h-12 rounded-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center transition-all border border-red-500/20" title="Leave Room">
-            <i class="fa-solid fa-phone-slash"></i>
+        <button id="leave-btn" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center transition-all border border-red-500/20" title="Leave Room">
+            <i class="fa-solid fa-phone-slash text-sm lg:text-base"></i>
         </button>
 
     </footer>
@@ -193,10 +202,10 @@
             peer: null,
             myId: null,
             myStream: null,
-            currentShareStream: null, // Can be screen or file
-            shareType: null, // 'screen' or 'file'
+            currentShareStream: null, 
+            shareType: null,
             fileUrl: null,
-            peers: {}, // Map<peerId, {call, videoEl}>
+            peers: {}, 
             isMuted: false,
             isVideoOff: false
         };
@@ -238,7 +247,7 @@
                 return true;
             } catch (err) {
                 console.error("Failed to get local stream", err);
-                showStatus("Error: Camera/Mic access denied. Please allow permissions.", true);
+                showStatus("Error: Camera/Mic access denied.", true);
                 return false;
             }
         }
@@ -257,11 +266,11 @@
                 peer.on('error', (err) => {
                     console.error("PeerJS Error:", err);
                     if(err.type === 'unavailable-id') {
-                        showStatus("Room ID already taken or invalid.");
+                        showStatus("Room ID already taken.");
                     } else if (err.type === 'peer-unavailable') {
-                        showStatus("Room not found. Check the ID.");
+                        showStatus("Room not found.");
                     } else {
-                        showStatus("Connection error. Try refreshing.");
+                        showStatus("Connection error.");
                     }
                     reject(err);
                 });
@@ -277,14 +286,11 @@
         function handleIncomingCall(call) {
             const isContentShare = call.metadata && call.metadata.type === 'content';
             
-            console.log("Incoming call. Is Content Share?", isContentShare);
-
-            // Answer with current AV stream (or null if we wanted to be receive-only for content)
             call.answer(state.myStream);
 
             call.on('stream', (remoteStream) => {
                 if (isContentShare) {
-                    setCinemaMode(remoteStream, false, false); // Not local, no controls
+                    setCinemaMode(remoteStream, false, false); 
                 } else {
                     addRemoteVideo(call.peer, remoteStream);
                 }
@@ -321,7 +327,7 @@
             updateParticipantCount();
         }
 
-        // --- Content Sharing Logic (Screen & File) ---
+        // --- Content Sharing Logic ---
 
         function broadcastStream(stream) {
             Object.keys(state.peers).forEach(peerId => {
@@ -345,11 +351,11 @@
             resetShareButtons();
         }
 
-        // 1. Screen Share
         async function startScreenShare() {
             if (state.currentShareStream) stopCurrentShare();
 
             try {
+                // For mobile, getDisplayMedia has limited support, but works on Android 10+
                 const stream = await navigator.mediaDevices.getDisplayMedia({ 
                     video: { cursor: "always" }, 
                     audio: true 
@@ -357,8 +363,7 @@
                 state.currentShareStream = stream;
                 state.shareType = 'screen';
 
-                setCinemaMode(stream, true, false); // Local preview, no controls needed for screen share
-                
+                setCinemaMode(stream, true, false);
                 updateShareButtons('screen');
 
                 stream.getVideoTracks()[0].onended = () => stopCurrentShare();
@@ -366,10 +371,11 @@
 
             } catch (err) {
                 console.error("Error sharing screen:", err);
+                showStatus("Screen sharing cancelled or not supported.", true);
+                setTimeout(() => showStatus(""), 3000);
             }
         }
 
-        // 2. File Share
         els.btnShareFile.addEventListener('click', () => {
             if (state.shareType === 'file') {
                 stopCurrentShare();
@@ -382,7 +388,7 @@
             const file = e.target.files[0];
             if (!file) return;
             startFileShare(file);
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
         });
 
         function startFileShare(file) {
@@ -391,17 +397,12 @@
             state.fileUrl = URL.createObjectURL(file);
             state.shareType = 'file';
 
-            // Set video source locally first
             els.sharedScreenVideo.srcObject = null;
             els.sharedScreenVideo.src = state.fileUrl;
             
-            // Wait for metadata to load to ensure captureStream works
             els.sharedScreenVideo.onloadedmetadata = () => {
-                // IMPORTANT: Controls enabled for Host so they can play/pause/seek
                 setCinemaMode(null, true, true); 
                 
-                // Capture the stream from the video element
-                // mozCaptureStream for Firefox, captureStream for others
                 const stream = els.sharedScreenVideo.captureStream ? 
                                els.sharedScreenVideo.captureStream() : 
                                els.sharedScreenVideo.mozCaptureStream();
@@ -421,18 +422,14 @@
             els.placeholderCinema.classList.add('hidden');
             els.sharedScreenVideo.classList.remove('hidden');
             
-            // For file sharing, we set .src directly, not .srcObject
             if (stream) {
                 els.sharedScreenVideo.src = ""; 
                 els.sharedScreenVideo.srcObject = stream;
             }
 
             els.sharedScreenVideo.controls = showControls;
-            els.sharedScreenVideo.muted = isLocal && !showControls; // Mute screen share, but maybe not file share if host wants to hear
+            els.sharedScreenVideo.muted = isLocal && !showControls; 
             
-            // If file share host, we want to hear it, but captureStream also sends audio.
-            // If we mute the element, captureStream usually sends silence. 
-            // So we keep it unmuted for file share host.
             if (isLocal && showControls) {
                 els.sharedScreenVideo.muted = false;
             }
@@ -449,22 +446,22 @@
         function resetShareButtons() {
             els.btnShareScreen.classList.remove('bg-red-600', 'hover:bg-red-700');
             els.btnShareScreen.classList.add('bg-blue-600', 'hover:bg-blue-500');
-            els.btnShareScreen.innerHTML = `<i class="fa-solid fa-desktop"></i><span class="hidden sm:inline">Screen</span>`;
+            els.btnShareScreen.innerHTML = `<i class="fa-solid fa-desktop"></i><span class="hidden md:inline">Screen</span>`;
 
             els.btnShareFile.classList.remove('bg-red-600', 'hover:bg-red-700');
             els.btnShareFile.classList.add('bg-purple-600', 'hover:bg-purple-500');
-            els.btnShareFile.innerHTML = `<i class="fa-solid fa-file-video"></i><span class="hidden sm:inline">Stream File</span>`;
+            els.btnShareFile.innerHTML = `<i class="fa-solid fa-file-video"></i><span class="hidden md:inline">File</span>`;
         }
 
         function updateShareButtons(type) {
             if (type === 'screen') {
                 els.btnShareScreen.classList.add('bg-red-600', 'hover:bg-red-700');
                 els.btnShareScreen.classList.remove('bg-blue-600', 'hover:bg-blue-500');
-                els.btnShareScreen.innerHTML = `<i class="fa-solid fa-stop"></i><span class="hidden sm:inline">Stop Screen</span>`;
+                els.btnShareScreen.innerHTML = `<i class="fa-solid fa-stop"></i><span class="hidden md:inline">Stop</span>`;
             } else if (type === 'file') {
                 els.btnShareFile.classList.add('bg-red-600', 'hover:bg-red-700');
                 els.btnShareFile.classList.remove('bg-purple-600', 'hover:bg-purple-500');
-                els.btnShareFile.innerHTML = `<i class="fa-solid fa-stop"></i><span class="hidden sm:inline">Stop File</span>`;
+                els.btnShareFile.innerHTML = `<i class="fa-solid fa-stop"></i><span class="hidden md:inline">Stop</span>`;
             }
         }
 
@@ -473,7 +470,7 @@
 
             const div = document.createElement('div');
             div.id = `video-${peerId}`;
-            div.className = "video-container aspect-video bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative animation-fade-in";
+            div.className = "video-container aspect-video bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative animation-fade-in shrink-0 w-40 lg:w-auto";
             div.innerHTML = `
                 <video autoplay playsinline></video>
                 <div class="participant-label">Friend</div>
@@ -498,7 +495,7 @@
 
         function showStatus(msg, isError = false) {
             els.statusMsg.innerText = msg;
-            els.statusMsg.className = isError ? "text-sm text-red-400 font-medium" : "text-sm text-green-400 font-medium";
+            els.statusMsg.className = isError ? "text-xs lg:text-sm text-red-400 font-medium" : "text-xs lg:text-sm text-green-400 font-medium";
         }
 
         function generateRoomId() {
@@ -509,7 +506,7 @@
 
         els.createBtn.addEventListener('click', async () => {
             els.createBtn.disabled = true;
-            els.createBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating...`;
+            els.createBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
             
             if (await initLocalStream()) {
                 const roomId = generateRoomId();
@@ -519,13 +516,13 @@
                 els.displayRoomId.innerText = roomId;
             } else {
                 els.createBtn.disabled = false;
-                els.createBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create New Room`;
+                els.createBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Room`;
             }
         });
 
         els.joinBtn.addEventListener('click', async () => {
             const roomId = els.roomInput.value.trim().toUpperCase();
-            if (!roomId) return showStatus("Please enter a Room ID", true);
+            if (!roomId) return showStatus("Enter ID", true);
 
             els.joinBtn.disabled = true;
             els.joinBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
@@ -552,7 +549,9 @@
         els.btnMic.addEventListener('click', () => {
             state.isMuted = !state.isMuted;
             state.myStream.getAudioTracks()[0].enabled = !state.isMuted;
-            els.btnMic.innerHTML = state.isMuted ? `<i class="fa-solid fa-microphone-slash"></i>` : `<i class="fa-solid fa-microphone"></i>`;
+            els.btnMic.innerHTML = state.isMuted 
+                ? `<i class="fa-solid fa-microphone-slash text-sm lg:text-base"></i>` 
+                : `<i class="fa-solid fa-microphone text-sm lg:text-base"></i>`;
             els.btnMic.classList.toggle('bg-red-500', state.isMuted);
             els.btnMic.classList.toggle('bg-slate-800', !state.isMuted);
         });
@@ -560,7 +559,9 @@
         els.btnCam.addEventListener('click', () => {
             state.isVideoOff = !state.isVideoOff;
             state.myStream.getVideoTracks()[0].enabled = !state.isVideoOff;
-            els.btnCam.innerHTML = state.isVideoOff ? `<i class="fa-solid fa-video-slash"></i>` : `<i class="fa-solid fa-video"></i>`;
+            els.btnCam.innerHTML = state.isVideoOff 
+                ? `<i class="fa-solid fa-video-slash text-sm lg:text-base"></i>` 
+                : `<i class="fa-solid fa-video text-sm lg:text-base"></i>`;
             els.btnCam.classList.toggle('bg-red-500', state.isVideoOff);
             els.btnCam.classList.toggle('bg-slate-800', !state.isVideoOff);
         });
@@ -574,7 +575,7 @@
         });
 
         els.btnLeave.addEventListener('click', () => {
-            if (confirm("Are you sure you want to leave?")) window.location.reload();
+            if (confirm("Leave room?")) window.location.reload();
         });
 
     </script>
