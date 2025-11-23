@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WatchParty - High Quality Audio</title>
+    <title>WatchParty - Clear Audio</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -102,7 +102,7 @@
                     <i class="fa-solid fa-users-viewfinder text-3xl lg:text-4xl text-blue-500"></i>
                 </div>
                 <h2 class="text-xl lg:text-2xl font-bold mb-2">Watch Together</h2>
-                <p class="text-slate-400 text-sm lg:text-base mb-6 lg:mb-8">Share movies or screens. <br>Use headphones for best audio.</p>
+                <p class="text-slate-400 text-sm lg:text-base mb-6 lg:mb-8">Clear Audio & Mobile Ready.</p>
 
                 <div class="space-y-3 lg:space-y-4">
                     <button id="create-room-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2">
@@ -187,30 +187,27 @@
         </div>
     </main>
 
-    <!-- Bottom Controls -->
-    <footer class="h-16 lg:h-20 bg-slate-900 border-t border-slate-800 flex items-center justify-between lg:justify-center gap-2 lg:gap-6 shrink-0 z-20 px-4">
+    <!-- Bottom Controls - Updated Layout for Mobile -->
+    <footer class="h-16 lg:h-20 bg-slate-900 border-t border-slate-800 flex items-center justify-center shrink-0 z-20 px-2 lg:px-4">
         
-        <!-- Left Side: AV Controls (Everyone) -->
-        <div class="flex items-center gap-3">
-            <button id="toggle-mic" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700" title="Toggle Microphone">
+        <!-- Central Control Hub -->
+        <div class="flex items-center gap-2 md:gap-4 lg:gap-6 w-full max-w-4xl justify-center">
+            
+            <!-- Mic -->
+            <button id="toggle-mic" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700 shrink-0" title="Toggle Microphone">
                 <i class="fa-solid fa-microphone text-sm lg:text-base"></i>
             </button>
 
-            <button id="toggle-cam" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700" title="Toggle Camera">
+            <!-- Cam -->
+            <button id="toggle-cam" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700 shrink-0" title="Toggle Camera">
                 <i class="fa-solid fa-video text-sm lg:text-base"></i>
             </button>
 
-            <!-- Audio Mode Toggle -->
-            <button id="toggle-audio-mode" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-yellow-400 flex items-center justify-center transition-all border border-slate-700" title="Toggle High Quality Audio (Headphones Recommended)">
-                <i class="fa-solid fa-headset text-sm lg:text-base"></i>
-            </button>
-        </div>
+            <!-- Divider -->
+            <div class="w-px h-6 lg:h-8 bg-slate-700 mx-1 lg:mx-2 shrink-0"></div>
 
-        <div class="w-px h-6 lg:h-8 bg-slate-700 hidden lg:block"></div>
-
-        <!-- Right Side: Sharing & Leave -->
-        <div class="flex items-center gap-3">
-            <button id="share-screen-btn" class="px-3 lg:px-5 h-10 lg:h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20 text-sm lg:text-base">
+            <!-- Share Screen -->
+            <button id="share-screen-btn" class="px-3 lg:px-5 h-10 lg:h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20 text-xs lg:text-base shrink-0">
                 <i class="fa-solid fa-desktop"></i>
                 <span class="hidden md:inline">Screen</span>
             </button>
@@ -218,12 +215,17 @@
             <!-- Hidden File Input -->
             <input type="file" id="file-input" accept="video/*" class="hidden">
             
-            <button id="share-file-btn" class="px-3 lg:px-5 h-10 lg:h-12 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20 text-sm lg:text-base">
+            <!-- Share File -->
+            <button id="share-file-btn" class="px-3 lg:px-5 h-10 lg:h-12 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20 text-xs lg:text-base shrink-0">
                 <i class="fa-solid fa-file-video"></i>
                 <span class="hidden md:inline">File</span>
             </button>
 
-            <button id="leave-btn" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center transition-all border border-red-500/20" title="Leave Room">
+            <!-- Divider -->
+            <div class="w-px h-6 lg:h-8 bg-slate-700 mx-1 lg:mx-2 shrink-0"></div>
+
+            <!-- Leave -->
+            <button id="leave-btn" class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center transition-all border border-red-500/20 shrink-0" title="Leave Room">
                 <i class="fa-solid fa-phone-slash text-sm lg:text-base"></i>
             </button>
         </div>
@@ -242,8 +244,7 @@
             fileUrl: null,
             peers: {}, 
             isMuted: false,
-            isVideoOff: false,
-            isHQAudio: false // Default to standard voice (echo cancellation ON)
+            isVideoOff: false
         };
 
         // --- DOM Elements ---
@@ -269,7 +270,6 @@
             
             btnMic: document.getElementById('toggle-mic'),
             btnCam: document.getElementById('toggle-cam'),
-            btnAudioMode: document.getElementById('toggle-audio-mode'),
             btnShareScreen: document.getElementById('share-screen-btn'),
             btnShareFile: document.getElementById('share-file-btn'),
             fileInput: document.getElementById('file-input'),
@@ -279,17 +279,14 @@
 
         // --- Initialization ---
 
-        async function initLocalStream(hqMode = false) {
-            // Stop old tracks if any
-            if (state.myStream) {
-                state.myStream.getTracks().forEach(track => track.stop());
-            }
-
-            // HQ Mode = Disable noise suppression (Good for music, Bad for echo)
-            // Voice Mode = Enable noise suppression (Good for chat, Bad for music)
-            const audioConstraints = hqMode ? 
-                { echoCancellation: false, noiseSuppression: false, autoGainControl: false } : 
-                { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+        async function initLocalStream() {
+            // Standard Voice settings for Mic (Echo Cancellation ON)
+            // This ensures chatting doesn't cause echo
+            const audioConstraints = { 
+                echoCancellation: true, 
+                noiseSuppression: true, 
+                autoGainControl: true 
+            };
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -304,29 +301,12 @@
                 stream.getAudioTracks()[0].enabled = !state.isMuted;
                 stream.getVideoTracks()[0].enabled = !state.isVideoOff;
 
-                // Re-replace track in existing connections
-                if (state.peer) {
-                    replaceStreamInCalls(stream);
-                }
-
                 return true;
             } catch (err) {
                 console.error("Failed to get local stream", err);
                 showStatus("Error: Camera/Mic access denied.", true);
                 return false;
             }
-        }
-
-        function replaceStreamInCalls(newStream) {
-            Object.values(state.peers).forEach(peerObj => {
-                if(peerObj.call && peerObj.call.peerConnection) {
-                    const sender = peerObj.call.peerConnection.getSenders().find(s => s.track.kind === 'audio');
-                    if (sender) sender.replaceTrack(newStream.getAudioTracks()[0]);
-                    
-                    const videoSender = peerObj.call.peerConnection.getSenders().find(s => s.track.kind === 'video');
-                    if (videoSender) videoSender.replaceTrack(newStream.getVideoTracks()[0]);
-                }
-            });
         }
 
         function initPeer(customId = null) {
@@ -441,14 +421,16 @@
             if (state.currentShareStream) stopCurrentShare();
 
             try {
-                // Request high quality audio for screen share
+                // FIXED: Explicitly disable noise suppression for content sharing
+                // This prevents "movie dialogue removal" and "underwater" sounds
                 const stream = await navigator.mediaDevices.getDisplayMedia({ 
                     video: { cursor: "always" }, 
                     audio: {
                         echoCancellation: false,
                         noiseSuppression: false,
                         autoGainControl: false,
-                        channelCount: 2 // Stereo
+                        channelCount: 2, // Request stereo
+                        sampleRate: 48000
                     }
                 });
                 state.currentShareStream = stream;
@@ -494,10 +476,19 @@
                 els.sharedScreenVideo.oncanplay = null;
                 setCinemaMode(null, true, true); 
                 
-                // Capture stream - high quality
+                // FIXED: Ensure captured stream from file is high fidelity
                 const stream = els.sharedScreenVideo.captureStream ? 
                                els.sharedScreenVideo.captureStream() : 
                                els.sharedScreenVideo.mozCaptureStream();
+                
+                // Force audio tracks to be clean if possible (browser dependent)
+                stream.getAudioTracks().forEach(track => {
+                    track.applyConstraints({
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }).catch(e => console.log("Constraint apply failed", e));
+                });
                 
                 state.currentShareStream = stream;
                 updateShareButtons('file');
@@ -683,34 +674,6 @@
                 : `<i class="fa-solid fa-video text-sm lg:text-base"></i>`;
             els.btnCam.classList.toggle('bg-red-500', state.isVideoOff);
             els.btnCam.classList.toggle('bg-slate-800', !state.isVideoOff);
-        });
-
-        // Toggle Audio Mode (Voice vs Cinema)
-        els.btnAudioMode.addEventListener('click', async () => {
-            state.isHQAudio = !state.isHQAudio;
-            
-            // Re-init stream with new constraints
-            await initLocalStream(state.isHQAudio);
-            
-            // Visual feedback
-            if (state.isHQAudio) {
-                // HQ Mode ON (Cinema)
-                els.btnAudioMode.innerHTML = `<i class="fa-solid fa-music text-sm lg:text-base"></i>`;
-                els.btnAudioMode.classList.remove('text-yellow-400');
-                els.btnAudioMode.classList.add('bg-green-600', 'text-white');
-                els.btnAudioMode.title = "Cinema Mode (Use Headphones)";
-                showStatus("Cinema Audio Mode ON. Use Headphones!", false);
-            } else {
-                // Voice Mode ON
-                els.btnAudioMode.innerHTML = `<i class="fa-solid fa-headset text-sm lg:text-base"></i>`;
-                els.btnAudioMode.classList.add('text-yellow-400');
-                els.btnAudioMode.classList.remove('bg-green-600', 'text-white');
-                els.btnAudioMode.title = "Voice Mode (Echo Cancelled)";
-                showStatus("Voice Chat Mode ON", false);
-            }
-            
-            // Clear status after 3s
-            setTimeout(() => showStatus(""), 3000);
         });
 
         els.btnShareScreen.addEventListener('click', () => {
