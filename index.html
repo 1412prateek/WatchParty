@@ -59,6 +59,18 @@
         }
 
         .hidden { display: none !important; }
+        
+        /* Overlay for play button */
+        .play-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col">
@@ -118,14 +130,24 @@
             <div id="placeholder-cinema" class="text-center text-slate-600 px-4">
                 <i class="fa-solid fa-display text-4xl lg:text-6xl mb-4 opacity-50"></i>
                 <p class="text-base lg:text-lg font-medium">Waiting for content...</p>
-                <p class="text-xs lg:text-sm opacity-60 mt-1">Share screen or file to start.</p>
+                <p class="text-xs lg:text-sm opacity-60 mt-1 mb-4">Share screen or file to start.</p>
+                <button onclick="window.location.reload()" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded text-slate-400 transition-colors">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> Refresh if stuck
+                </button>
             </div>
-            <!-- The Shared Screen Video Element -->
-            <video id="shared-screen-video" autoplay playsinline class="screen-share hidden shadow-2xl bg-black w-full h-full"></video>
+            
+            <div id="video-wrapper" class="relative w-full h-full hidden flex items-center justify-center">
+                <!-- The Shared Screen Video Element -->
+                <video id="shared-screen-video" autoplay playsinline class="screen-share shadow-2xl bg-black w-full h-full"></video>
+                
+                <!-- Manual Play Overlay (Fix for Autoplay issues) -->
+                <div id="play-overlay" class="play-overlay hidden">
+                    <i class="fa-solid fa-circle-play text-6xl text-white/80 hover:text-white transition-transform transform hover:scale-110"></i>
+                </div>
+            </div>
         </div>
 
         <!-- Sidebar Participants (Grid) -->
-        <!-- Mobile: Horizontal Strip at bottom. Desktop: Vertical Sidebar at right -->
         <div id="participants-bar" class="
             h-36 lg:h-auto 
             w-full lg:w-80 
@@ -140,7 +162,6 @@
             </div>
             
             <!-- Video Container Grid -->
-            <!-- Mobile: flex-row, overflow-x. Desktop: flex-col, overflow-y -->
             <div id="video-grid" class="
                 flex-1 p-2 lg:p-4 
                 flex flex-row lg:flex-col 
@@ -207,7 +228,8 @@
             fileUrl: null,
             peers: {}, 
             isMuted: false,
-            isVideoOff: false
+            isVideoOff: false,
+            isHost: false
         };
 
         // --- DOM Elements ---
@@ -226,7 +248,9 @@
             
             cinemaStage: document.getElementById('cinema-stage'),
             placeholderCinema: document.getElementById('placeholder-cinema'),
+            videoWrapper: document.getElementById('video-wrapper'),
             sharedScreenVideo: document.getElementById('shared-screen-video'),
+            playOverlay: document.getElementById('play-overlay'),
             
             btnMic: document.getElementById('toggle-mic'),
             btnCam: document.getElementById('toggle-cam'),
@@ -254,7 +278,7 @@
 
         function initPeer(customId = null) {
             return new Promise((resolve, reject) => {
-                const peer = new Peer(customId, { debug: 2 });
+                const peer = new Peer(customId, { debug: 1 });
 
                 peer.on('open', (id) => {
                     state.myId = id;
@@ -269,10 +293,18 @@
                         showStatus("Room ID already taken.");
                     } else if (err.type === 'peer-unavailable') {
                         showStatus("Room not found.");
+                    } else if (err.type === 'network') {
+                        showStatus("Network connection lost.");
                     } else {
                         showStatus("Connection error.");
                     }
                     reject(err);
+                });
+
+                peer.on('disconnected', () => {
+                    console.log("Disconnected from signalling server. Attempting reconnect...");
+                    showStatus("Network lost. Reconnecting...", true);
+                    peer.reconnect();
                 });
 
                 peer.on('call', (call) => {
@@ -286,6 +318,9 @@
         function handleIncomingCall(call) {
             const isContentShare = call.metadata && call.metadata.type === 'content';
             
+            console.log("Incoming call from:", call.peer, "Type:", isContentShare ? "Content" : "User");
+
+            // Answer with AV stream
             call.answer(state.myStream);
 
             call.on('stream', (remoteStream) => {
@@ -307,6 +342,18 @@
             if (!isContentShare) {
                 state.peers[call.peer] = { call };
                 updateParticipantCount();
+
+                // CRITICAL FIX: If I am the host/sharer and have an active stream, 
+                // send it to this new person immediately.
+                if (state.currentShareStream) {
+                    console.log("Sending active content stream to new peer:", call.peer);
+                    setTimeout(() => {
+                        const shareCall = state.peer.call(call.peer, state.currentShareStream, { 
+                            metadata: { type: 'content' } 
+                        });
+                        // No need to handle answer stream for one-way broadcast
+                    }, 1000); // Small delay to ensure their connection is stable
+                }
             }
         }
 
@@ -331,6 +378,7 @@
 
         function broadcastStream(stream) {
             Object.keys(state.peers).forEach(peerId => {
+                console.log("Broadcasting to:", peerId);
                 state.peer.call(peerId, stream, { metadata: { type: 'content' } });
             });
         }
@@ -355,7 +403,6 @@
             if (state.currentShareStream) stopCurrentShare();
 
             try {
-                // For mobile, getDisplayMedia has limited support, but works on Android 10+
                 const stream = await navigator.mediaDevices.getDisplayMedia({ 
                     video: { cursor: "always" }, 
                     audio: true 
@@ -371,7 +418,7 @@
 
             } catch (err) {
                 console.error("Error sharing screen:", err);
-                showStatus("Screen sharing cancelled or not supported.", true);
+                showStatus("Screen sharing cancelled.", true);
                 setTimeout(() => showStatus(""), 3000);
             }
         }
@@ -400,15 +447,19 @@
             els.sharedScreenVideo.srcObject = null;
             els.sharedScreenVideo.src = state.fileUrl;
             
-            els.sharedScreenVideo.onloadedmetadata = () => {
+            // Wait for data so captureStream works correctly
+            els.sharedScreenVideo.oncanplay = () => {
+                // Remove listener to prevent re-triggering
+                els.sharedScreenVideo.oncanplay = null;
+                
                 setCinemaMode(null, true, true); 
                 
+                // Ensure audio is captured by temporarily unmuting if needed, though local needs sound
                 const stream = els.sharedScreenVideo.captureStream ? 
                                els.sharedScreenVideo.captureStream() : 
                                els.sharedScreenVideo.mozCaptureStream();
                 
                 state.currentShareStream = stream;
-                
                 updateShareButtons('file');
                 broadcastStream(stream);
                 
@@ -420,7 +471,9 @@
 
         function setCinemaMode(stream, isLocal, showControls) {
             els.placeholderCinema.classList.add('hidden');
+            els.videoWrapper.classList.remove('hidden');
             els.sharedScreenVideo.classList.remove('hidden');
+            els.playOverlay.classList.add('hidden');
             
             if (stream) {
                 els.sharedScreenVideo.src = ""; 
@@ -428,15 +481,45 @@
             }
 
             els.sharedScreenVideo.controls = showControls;
-            els.sharedScreenVideo.muted = isLocal && !showControls; 
             
-            if (isLocal && showControls) {
-                els.sharedScreenVideo.muted = false;
+            // Logic to prevent echo: Mute if local screen share. 
+            // Unmute if local file share (so host can hear).
+            // Mute if remote (unless it's the stream we want to hear).
+            if (isLocal) {
+                els.sharedScreenVideo.muted = !showControls; // Screen share muted, File share unmuted
+            } else {
+                els.sharedScreenVideo.muted = false; // Remote viewers always need audio
+                // Attempt play for remote viewers
+                const playPromise = els.sharedScreenVideo.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Autoplay prevented:", error);
+                        els.playOverlay.classList.remove('hidden');
+                    });
+                }
+            }
+
+            // Auto-resume logic for network hiccups
+            if (!isLocal) {
+                els.sharedScreenVideo.onpause = () => {
+                    // If paused but not by user interaction (which is impossible as controls are hidden for remote)
+                    // and not ended, try to resume
+                    if (!els.sharedScreenVideo.ended && els.sharedScreenVideo.readyState > 2) {
+                        els.sharedScreenVideo.play().catch(e => console.log("Resume failed", e));
+                    }
+                };
             }
         }
 
+        // Add manual play handler
+        els.playOverlay.addEventListener('click', () => {
+            els.sharedScreenVideo.play();
+            els.playOverlay.classList.add('hidden');
+        });
+
         function stopCinemaMode() {
             els.placeholderCinema.classList.remove('hidden');
+            els.videoWrapper.classList.add('hidden');
             els.sharedScreenVideo.classList.add('hidden');
             els.sharedScreenVideo.srcObject = null;
             els.sharedScreenVideo.src = "";
@@ -511,6 +594,7 @@
             if (await initLocalStream()) {
                 const roomId = generateRoomId();
                 await initPeer(roomId);
+                state.isHost = true;
                 els.setupScreen.classList.add('hidden');
                 els.roomInfo.classList.remove('hidden');
                 els.displayRoomId.innerText = roomId;
